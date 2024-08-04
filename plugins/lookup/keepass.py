@@ -42,6 +42,9 @@ DOCUMENTATION = """
       - "{{ lookup('keepass', 'path/to/entry', 'password') }}"
       - "{{ lookup('keepass', 'path/to/entry', 'custom_properties', 'my_prop_name') }}"
       - "{{ lookup('keepass', 'path/to/entry', 'attachments', 'my_file_name') }}"
+      - "{{ lookup('keepass', 'entry', 'username') }}"
+      - "{{ lookup('keepass', 'entry', 'password', regex=true) }}"
+      - "{{ lookup('keepass', 'entry', 'password', url='github.com', regex=true) }}"
 """
 
 display = Display()
@@ -289,7 +292,14 @@ def _keepass_socket(kdbx, kdbx_key, sock_path, ttl=60, kdbx_password=None):
                             for _ in re.split(r"(?<!\\)/", arg[0])
                             if _ != ""
                         ]
-                        entry = kp.find_entries_by_path(path, first=True)
+                        if 'first' not in kwargs:
+                            kwargs['first'] = True
+                        if len(path) > 1:
+                            entry = kp.find_entries(path=path, **kwargs)
+                        elif len(path) == 1:
+                            entry = kp.find_entries(title=path[0], **kwargs)
+                        else:
+                            entry = kp.find_entries(**kwargs)
 
                         if entry is None:
                             conn.send(
