@@ -4,6 +4,7 @@ import argparse
 import getpass
 import hashlib
 import fcntl
+import json
 import os
 import re
 import socket
@@ -150,9 +151,10 @@ class LookupModule(LookupBase):
             return []
         else:
             # Fetching data from the keepass socket
-            return self._send(socket_path, "fetch", terms)
+            return self._send(socket_path, "fetch", terms, **kwargs)
 
-    def _send(self, kp_soc, cmd, terms):
+    def _send(self, kp_soc, cmd, terms, **kwargs):
+
         display.vvv("KeePass: connect to '%s'" % kp_soc)
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
@@ -163,7 +165,7 @@ class LookupModule(LookupBase):
 
         try:
             display.vvv("KeePass: %s %s" % (cmd, terms))
-            sock.send(_rq(cmd, *terms))
+            sock.send(_rq(cmd, *terms, **kwargs))
 
             data = b''
             while True:
@@ -230,12 +232,12 @@ def _keepass_socket(kdbx, kdbx_key, sock_path, ttl=60, kdbx_password=None):
                         if not data:
                             break
 
-                        rq = data.splitlines()
+                        rq = json.loads(data)
                         if len(rq) == 0:
                             conn.send(_resp("", 1, "empty request"))
                             break
 
-                        cmd, *arg = rq
+                        cmd, arg, kwargs = rq['cmd'], rq['arg'], rq['kwargs']
                         arg_len = len(arg)
 
                         # CMD: quit | exit | close
@@ -396,13 +398,13 @@ def _keepass_socket(kdbx, kdbx_key, sock_path, ttl=60, kdbx_password=None):
             os.remove(lock_file_)
 
 
-def _rq(cmd, *arg):
+def _rq(cmd, *arg, **kwargs):
     """Request to keepass socket
 
     :param str cmd: Command name
     :param arg: Arguments
     """
-    return "\n".join((cmd, *arg)).encode()
+    return json.dumps({'cmd': cmd, 'arg': arg, 'kwargs': kwargs}).encode()
 
 
 def _resp(cmd, status_code, payload=""):
