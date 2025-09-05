@@ -292,12 +292,14 @@ def _keepass_socket(kdbx, kdbx_key, sock_path, ttl=60, kdbx_password=None):
                             for _ in re.split(r"(?<!\\)/", arg[0])
                             if _ != ""
                         ]
-                        if 'first' not in kwargs:
-                            kwargs['first'] = True
-                        if len(path) > 1:
+                        kwargs.setdefault('first', True)
+                        path_len = len(path)
+                        if 1 < path_len:
                             entry = kp.find_entries(path=path, **kwargs)
-                        elif len(path) == 1:
-                            entry = kp.find_entries(title=path[0], **kwargs)
+                        elif 1 == path_len and (path0 := path[0]).startswith('/') or path0.startswith('./'):
+                            entry = kp.find_entries(title=path0, **kwargs)
+                        elif 1 == path_len:
+                            entry = kp.find_entries(path=path, **kwargs)
                         else:
                             entry = kp.find_entries(**kwargs)
 
